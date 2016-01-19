@@ -2,7 +2,6 @@
 import SocketServer, os, time
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
-# Copyright 2016 Tiancheng Shen
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,19 +28,47 @@ import SocketServer, os, time
 
 
 class MyWebServer(SocketServer.BaseRequestHandler):
-    
+ 
+    def parseRequest(self):
+        message = ''
+        path = ''
+        isInPath = False
+        i = 0
+
+        #get the verb
+        for element in self.data:
+            if element != '\n':
+                message += element
+            else:
+                break
+
+        #get the path
+        for char in message:
+            if char == '/':
+                isInPath = True
+            if isInPath:
+                if char == ' ':
+                    break
+                else:
+                    path += char
+                            
+        return message,path
+   
     def handle(self):
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: %s\n" % self.data)
-
+'''
         seq = self.data.splitlines()
         sequence = seq[0]
+	print sequence
         request = sequence.split(" ")
         action = request[0]
-        path = request[1]
+        path = request[1]'''
         
+	message,path = self.parseRequest()
+
         # check if the request is GET
-        if action == 'GET':
+        if message[:3] == 'GET':
             response = self.handlePath(path)
         else:
             response = self.notFound()
@@ -59,28 +86,26 @@ class MyWebServer(SocketServer.BaseRequestHandler):
         if checkpath in pathlist:
             # check file type
             if path.endswith('.html'):
-                fileType = 'Content-Type: text/html\r\n\r\n'
+                fileType = 'Content-Type: text/html\r\n'
                 page = rsp + path
-            elif path.endswith('base.css'):
-                fileType = 'Content-Type: text/css\r\n\r\n'
-		page = rsp + path
-	    elif path.endswith('deep.css'):
-		fileType = 'Content-Type: text/css\r\n\r\n'
-		if path.endswith ('deep/deep.css'):
-		    page = rsp + path
-		else:
-		    page = rsp + '/deep' + path
+            elif path.endswith('.css'):
+                fileType = 'Content-Type: text/css\r\n'
             elif path.endswith('/'):
-                fileType = 'Content-Type: text/html\r\n\r\n'
+                fileType = 'Content-Type: text/html\r\n'
                 if path == '/':
                     page = rsp + '/index.html'
                 else:
                     page = rsp + path + 'index.html'
-	    elif path.endswith('deep'):
-		fileType = 'Content-Type: text/html\r\n\r\n'
-		page = rsp + path + '/index.html'
+            '''elif path.endswith('deep'):
+                fileType = 'Content-Type: text/html\r\n'
+                page = rsp + path + '/index.html'''
             
             try:
+                '''if page == None:
+                    page = rsp + path'''
+                if path == '/deep.css':
+		    response = 'HTTP/1.1 301 Moved\r\n' + 'Location: http://127.0.0.1:8080/deep/deep.css\r\n'
+		    return response
                 # open and read file
                 File = open(page, 'r')
                 contents = File.read()
@@ -98,8 +123,8 @@ class MyWebServer(SocketServer.BaseRequestHandler):
         
     def notFound(self):
         # handle 404 not found problem
-        fileType = 'Content-Type: text/html\r\n\r\n'
-        response = 'HTTP/1.1 404 NOT FOUND\r\n' + 'Date: ' + time.strftime("%c") + ' GMT\r\n' + fileType + '404 NOT FOUND'
+        fileType = 'Content-Type: text/html\r\n'
+        response = 'HTTP/1.1 404 NOT FOUND\r\n' + 'Date: ' + time.strftime("%c") + ' GMT\r\n' + fileType + 'Connection closed'
         return response
                 
         
